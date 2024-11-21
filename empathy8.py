@@ -5,6 +5,7 @@ import speech_recognition as sr
 import random
 import time
 import os
+import argparse
 
 # Set your OpenAI API Key from an environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -22,7 +23,7 @@ FORBIDDEN_TOPICS = ["race", "religion", "nationality", "violence", "hate", "insu
 # Quit keywords
 QUIT_KEYWORDS = ["goodbye", "exit", "leave", "quit", "bye"]
 
-# Mapping of words to numbers for better age recognition
+# Mapping spoken numbers to integers for age recognition
 NUMBER_MAPPING = {
     "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
     "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
@@ -68,7 +69,7 @@ def set_voice_to_zira():
     engine.setProperty('volume', 1.0)  # Set volume to maximum
     print("Volume set to maximum.")
 
-# Function to handle emotional responses with empathy
+# Function to handle empathetic responses
 def handle_emotion_response(emotion):
     if "sad" in emotion.lower():
         return "I'm sorry to hear that you're feeling sad. Do you want to talk about what's making you feel this way?"
@@ -82,37 +83,6 @@ def handle_emotion_response(emotion):
         return "Feeling nervous is normal. Do you want to share what's on your mind?"
     else:
         return f"Thanks for sharing how you're feeling. Let's talk more and see how I can help!"
-
-# Function to check for inappropriate content
-def filter_inappropriate_content(user_input):
-    if not user_input:
-        return False
-    for topic in FORBIDDEN_TOPICS:
-        if topic in user_input.lower():
-            return True
-    return False
-
-# Function to check for quit keywords
-def is_quit_command(user_input):
-    if not user_input:
-        return False
-    for quit_word in QUIT_KEYWORDS:
-        if quit_word in user_input.lower():
-            return True
-    return False
-
-# Function to map spoken numbers to integers
-def parse_age_input(age_input):
-    if not age_input:
-        return None
-    try:
-        words = age_input.lower().split()
-        for word in words:
-            if word in NUMBER_MAPPING:
-                return NUMBER_MAPPING[word]
-        return int(''.join(filter(str.isdigit, age_input)))
-    except (ValueError, TypeError):
-        return None
 
 # Flask route for chatbot API
 @app.route("/chat", methods=["POST"])
@@ -137,17 +107,23 @@ def speak_and_display(text):
     engine.runAndWait()
     time.sleep(0.3)  # Short delay for audio synchronization
 
-# Main chatbot interaction function
-def chatbot_interaction():
+# Interactive mode: Speech-to-text and Text-to-speech interaction
+def interactive_chat():
     """Handle interactive chatbot sessions with voice and text."""
     set_voice_to_zira()
     speak_and_display("Hi there! How are you today?")
-    response = input("Child: ")  # Simulate user input for testing
+    response = input("Child (text for testing): ")  # Replace with audio logic if needed
     if is_quit_command(response):
         speak_and_display("Goodbye! It was so nice talking to you!")
         return
     speak_and_display("Let's continue chatting!")
 
 if __name__ == "__main__":
-    set_voice_to_zira()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    parser = argparse.ArgumentParser(description="Run chatbot in web or interactive mode.")
+    parser.add_argument("--mode", choices=["web", "interactive"], default="web", help="Mode to run the chatbot.")
+    args = parser.parse_args()
+
+    if args.mode == "web":
+        app.run(host="0.0.0.0", port=5000, debug=True)
+    elif args.mode == "interactive":
+        interactive_chat()
