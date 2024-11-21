@@ -62,7 +62,8 @@ def set_voice_to_zira():
     voices = engine.getProperty('voices')
     for voice in voices:
         if "zira" in voice.name.lower():
-            engine.setProperty('voice", voice.id)
+            engine.setProperty("voice", voice.id)
+
             print(f"Voice set to: {voice.name}")
             break
     engine.setProperty('volume', 1.0)  # Set volume to maximum
