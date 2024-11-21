@@ -5,7 +5,6 @@ import speech_recognition as sr
 import random
 import time
 import os
-import argparse
 
 # Set your OpenAI API Key from an environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -32,7 +31,7 @@ NUMBER_MAPPING = {
     "nineteen": 19, "twenty": 20
 }
 
-# Empathetic conversation topics with context keys
+# Empathetic conversation topics
 CONVERSATION_TOPICS = [
     {"prompt": "What do you love most about your day so far?", "context": "general"},
     {"prompt": "What's your favorite color? I bet it's a wonderful one!", "context": "color"},
@@ -63,7 +62,7 @@ def set_voice_to_zira():
     voices = engine.getProperty('voices')
     for voice in voices:
         if "zira" in voice.name.lower():
-            engine.setProperty('voice', voice.id)
+            engine.setProperty('voice", voice.id)
             print(f"Voice set to: {voice.name}")
             break
     engine.setProperty('volume', 1.0)  # Set volume to maximum
@@ -84,7 +83,7 @@ def handle_emotion_response(emotion):
     else:
         return f"Thanks for sharing how you're feeling. Let's talk more and see how I can help!"
 
-# Flask route for chatbot API
+# Flask route for chatbot API (for web mode)
 @app.route("/chat", methods=["POST"])
 def chat():
     """Handle chatbot interactions via web API."""
@@ -107,23 +106,55 @@ def speak_and_display(text):
     engine.runAndWait()
     time.sleep(0.3)  # Short delay for audio synchronization
 
-# Interactive mode: Speech-to-text and Text-to-speech interaction
+# Function to listen to user input via microphone
+def get_audio_input(prompt):
+    """Capture user input via speech recognition."""
+    speak_and_display(prompt)
+    with sr.Microphone() as source:
+        try:
+            print("Listening...")
+            audio = recognizer.listen(source, timeout=10, phrase_time_limit=8)
+            recognized_text = recognizer.recognize_google(audio)
+            print(f"Child: {recognized_text}")
+            return recognized_text
+        except sr.UnknownValueError:
+            speak_and_display("I'm sorry, I didn't catch that. Could you try again?")
+            return None
+        except sr.WaitTimeoutError:
+            speak_and_display("I didn't hear anything. Could you try again?")
+            return None
+        except sr.RequestError as e:
+            speak_and_display("I'm sorry, there seems to be a problem with the microphone.")
+            return None
+
+# Interactive mode: Voice-based interaction only
 def interactive_chat():
-    """Handle interactive chatbot sessions with voice and text."""
+    """Handle interactive chatbot sessions with voice and record conversation."""
     set_voice_to_zira()
+    conversation_log = []
+
     speak_and_display("Hi there! How are you today?")
-    response = input("Child (text for testing): ")  # Replace with audio logic if needed
-    if is_quit_command(response):
-        speak_and_display("Goodbye! It was so nice talking to you!")
-        return
-    speak_and_display("Let's continue chatting!")
+    while True:
+        user_input = get_audio_input("Please tell me more:")
+        if not user_input:
+            continue
+        if is_quit_command(user_input):
+            speak_and_display("Goodbye! It was so nice talking to you!")
+            break
+        if filter_inappropriate_content(user_input):
+            speak_and_display("Let's keep our conversation kind and positive.")
+            continue
+        response = handle_emotion_response(user_input)
+        speak_and_display(response)
+
+        # Log conversation
+        conversation_log.append({"user": user_input, "ai": response})
+
+    # Save conversation log to a file
+    with open("conversation_log.txt", "w") as log_file:
+        for entry in conversation_log:
+            log_file.write(f"User: {entry['user']}\n")
+            log_file.write(f"AI: {entry['ai']}\n\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run chatbot in web or interactive mode.")
-    parser.add_argument("--mode", choices=["web", "interactive"], default="web", help="Mode to run the chatbot.")
-    args = parser.parse_args()
-
-    if args.mode == "web":
-        app.run(host="0.0.0.0", port=5000, debug=True)
-    elif args.mode == "interactive":
-        interactive_chat()
+    interactive_chat()
