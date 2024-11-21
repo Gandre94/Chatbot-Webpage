@@ -1,5 +1,14 @@
 name: Deploy to GitHub Pages
 
+services:
+  - type: web
+    name: chatbot-webpage
+    env: python
+    buildCommand: |
+      apt-get update && apt-get install -y espeak-ng
+      pip install -r requirements.txt
+    startCommand: gunicorn empathy8:app
+
 on:
   push:
     branches:
