@@ -1,0 +1,104 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f9f9f9; /* Light gray background */
+    color: #333; /* Dark text for readability */
+}
+
+/* Chat History Styling */
+#chat-history {
+    border: 1px solid #ccc;
+    padding: 10px;
+    height: 300px;
+    overflow-y: auto; /* Smooth scrolling for overflow */
+    margin-bottom: 10px;
+    background-color: #fff; /* White background for better readability */
+    border-radius: 6px; /* Rounded corners */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Optional: Style the scrollbar for Webkit browsers */
+#chat-history::-webkit-scrollbar {
+    width: 8px;
+}
+
+#chat-history::-webkit-scrollbar-thumb {
+    background-color: #aaa; /* Gray scrollbar */
+    border-radius: 4px;
+}
+
+#chat-history::-webkit-scrollbar-thumb:hover {
+    background-color: #888; /* Darker gray on hover */
+}
+
+/* Chat Form Styling */
+#chat-form {
+    display: flex;
+    gap: 10px; /* Space between input and button */
+    align-items: center; /* Align items vertically */
+}
+
+/* Chat Input Field */
+#chat-input {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc; /* Border for consistency */
+    border-radius: 4px; /* Slight rounding for modern look */
+    box-shadow: inset 0px 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow for depth */
+}
+
+/* Submit Button */
+#chat-form button {
+    padding: 10px 15px;
+    font-size: 16px;
+    background-color: #007BFF; /* Primary blue background */
+    color: white; /* White text for contrast */
+    border: none;
+    cursor: pointer; /* Pointer cursor for interactivity */
+    border-radius: 4px; /* Rounded corners */
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+#chat-form button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Status Message Styling */
+#status {
+    font-style: italic;
+    color: #555; /* Muted gray for status messages */
+    margin-top: 10px;
+}
+
+/* Chat Response Styling */
+#chat-response {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #e9ecef; /* Light gray background */
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    color: #333;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    #chat-form {
+        flex-direction: column;
+    }
+
+    #chat-input {
+        margin-bottom: 10px;
+    }
+
+    #chat-form button {
+        width: 100%; /* Button spans full width */
+    }
+
+    #chat-history {
+        height: 200px; /* Reduce height for smaller screens */
+    }
+}
