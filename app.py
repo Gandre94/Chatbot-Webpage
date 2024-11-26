@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify
-import pyttsx3
+from flask import Flask, request, jsonify, render_template
 import openai
-import speech_recognition as sr
-import time
 import os
+import base64
+from TTS.api import TTS
+import soundfile as sf
+import io
+import speech_recognition as sr
 
 # Set your OpenAI API Key from an environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -13,40 +15,15 @@ if not openai.api_key:
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize speech recognizer and text-to-speech engine
+# Initialize Coqui TTS
+tts = TTS(model_name="tts_models/en/ljspeech/vits--neon", progress_bar=False, gpu=False)
+
+# Initialize speech recognizer
 recognizer = sr.Recognizer()
-engine = pyttsx3.init()
 
 # Filters for inappropriate content
 FORBIDDEN_TOPICS = ["race", "religion", "nationality", "violence", "hate", "insult", "offensive"]
-
-# Quit keywords
 QUIT_KEYWORDS = ["goodbye", "exit", "leave", "quit", "bye"]
-
-# Function to set the voice to Zira and max volume
-def set_voice_to_zira():
-    voices = engine.getProperty("voices")
-    for voice in voices:
-        if "zira" in voice.name.lower():
-            engine.setProperty("voice", voice.id)
-            print(f"Voice set to: {voice.name}")
-            break
-    else:
-        print("Desired voice (Zira) not found. Using default voice.")
-    engine.setProperty("volume", 1.0)
-    print("Volume set to maximum.")
-
-set_voice_to_zira()
-
-# Function to speak and display text (local use only)
-def speak_and_display(text):
-    print(f"Chatbot: {text}")
-    try:
-        engine.say(text)
-        engine.runAndWait()
-        time.sleep(0.3)
-    except Exception as e:
-        print(f"Error in text-to-speech: {e}")
 
 # Function to filter inappropriate content
 def filter_inappropriate_content(user_input):
@@ -66,7 +43,7 @@ def is_quit_command(user_input):
             return True
     return False
 
-# Function to process user input using OpenAI's API
+# Function to generate chatbot response using OpenAI's API
 def generate_response(user_input, conversation_history):
     try:
         if not user_input:
@@ -77,14 +54,14 @@ def generate_response(user_input, conversation_history):
             return "Goodbye! It was so nice talking to you!", True
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Ensure the correct model is being used
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful chatbot."},
                 {"role": "user", "content": user_input},
             ]
         )
 
-        chatbot_response = response['choices'][0]['message']['content'].strip()  # Correct response access
+        chatbot_response = response['choices'][0]['message']['content'].strip()
         conversation_history.append({"user": user_input, "assistant": chatbot_response})
         return chatbot_response, False
 
@@ -93,20 +70,16 @@ def generate_response(user_input, conversation_history):
 
 # Function to process empathy data
 def process_empathy(data):
-    """
-    Process the input data to generate an empathetic response.
-
-    Args:
-        data (dict): Input data containing user messages and context.
-
-    Returns:
-        dict: Processed data with an empathetic response.
-    """
     message = data.get("message", "")
     empathetic_response = f"I understand that you're feeling: {message}. It's important to acknowledge these emotions."
     return {"response": empathetic_response}
 
-# Flask route for JSON-based interaction
+# Route for the main page
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+# Route for handling chat messages
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
@@ -121,37 +94,18 @@ def chat():
 
         # Generate chatbot response
         response, quit_flag = generate_response(user_input, conversation_history)
-        return jsonify({"reply": response, "history": conversation_history, "quit": quit_flag})
+
+        # Convert response to speech using Coqui TTS
+        audio_data = tts.tts(response)
+        audio_buffer = io.BytesIO()
+        sf.write(audio_buffer, audio_data, samplerate=tts.synthesizer.output_sample_rate, format='WAV')
+        audio_buffer.seek(0)
+        audio_bytes = audio_buffer.read()
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+        return jsonify({"reply": response, "history": conversation_history, "quit": quit_flag, "audio": audio_base64})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# Function for speech-to-text chatbot interaction (local use only)
-def voice_chat():
-    print("Starting voice interaction mode...")
-    conversation_history = []
-
-    speak_and_display("Hi there! How are you today?")
-    while True:
-        try:
-            with sr.Microphone() as source:
-                speak_and_display("Please share your thoughts.")
-                audio = recognizer.listen(source, timeout=10, phrase_time_limit=8)
-                user_input = recognizer.recognize_google(audio)
-                print(f"User: {user_input}")
-        except sr.UnknownValueError:
-            speak_and_display("I'm sorry, I didn't catch that. Could you try again?")
-            continue
-        except sr.WaitTimeoutError:
-            speak_and_display("I didn't hear anything. Could you try again?")
-            continue
-
-        if is_quit_command(user_input):
-            speak_and_display("Goodbye! It was so nice talking to you!")
-            break
-
-        response, quit_flag = generate_response(user_input, conversation_history)
-        conversation_history.append({"user": user_input, "bot": response})
-        speak_and_display(response)
 
 # Entry point for the application
 if __name__ == "__main__":
