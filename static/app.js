@@ -1,114 +1,165 @@
-// Select DOM elements
-const startRecordBtn = document.getElementById('start-record-btn');
-const stopRecordBtn = document.getElementById('stop-record-btn');
-const status = document.getElementById('status');
-const chatResponse = document.getElementById('chat-response');
-const chatHistory = document.getElementById('chat-history');
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
+/* global webkitSpeechRecognition SpeechRecognition */
 
-let recognition;
+import React, { useState, useEffect } from "react";
 
-// Check for browser support for Speech Recognition
-if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
-} else if ('SpeechRecognition' in window) {
-    recognition = new SpeechRecognition();
-} else {
-    alert('Your browser does not support speech recognition.');
-}
+function App() {
+  const [recognition, setRecognition] = useState(null);
+  const [listening, setListening] = useState(false);
+  const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState([]);
+  const [status, setStatus] = useState("");
 
-// Configure recognition if supported
-if (recognition) {
-    recognition.continuous = false; // Stop after each utterance
-    recognition.interimResults = false; // Don't show interim results
-    recognition.lang = 'en-US'; // Set language to English
+  useEffect(() => {
+    if ("webkitSpeechRecognition" in window) {
+      const webkitRecognizer = new webkitSpeechRecognition();
+      webkitRecognizer.continuous = false;
+      webkitRecognizer.interimResults = false;
+      webkitRecognizer.lang = "en-US";
 
-    recognition.onstart = () => {
-        status.textContent = 'Listening...';
-        startRecordBtn.disabled = true;
-        stopRecordBtn.disabled = false;
-    };
+      webkitRecognizer.onstart = () => {
+        setStatus("Listening...");
+        setListening(true);
+      };
 
-    recognition.onresult = async (event) => {
-        const transcript = event.results[0][0].transcript.trim();
-        status.textContent = `You said: ${transcript}`;
-        if (transcript) {
-            await sendMessage(transcript);
-        } else {
-            chatResponse.textContent = "No input detected. Please try again.";
-        }
-    };
+      webkitRecognizer.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setStatus(`You said: ${transcript}`);
+        sendMessage(transcript);
+      };
 
-    recognition.onerror = (event) => {
-        status.textContent = `Error occurred: ${event.error}`;
-    };
+      webkitRecognizer.onerror = (event) => {
+        setStatus(`Error occurred: ${event.error}`);
+      };
 
-    recognition.onend = () => {
-        startRecordBtn.disabled = false;
-        stopRecordBtn.disabled = true;
-    };
+      webkitRecognizer.onend = () => {
+        setListening(false);
+        setStatus("");
+      };
 
-    startRecordBtn.addEventListener('click', () => {
-        recognition.start();
-    });
+      setRecognition(webkitRecognizer);
+    } else if ("SpeechRecognition" in window) {
+      const speechRecognizer = new SpeechRecognition();
+      speechRecognizer.continuous = false;
+      speechRecognizer.interimResults = false;
+      speechRecognizer.lang = "en-US";
 
-    stopRecordBtn.addEventListener('click', () => {
-        recognition.stop();
-    });
-}
+      speechRecognizer.onstart = () => {
+        setStatus("Listening...");
+        setListening(true);
+      };
 
-// Handle form submission for text-based chat
-chatForm.addEventListener('submit', async (event) => {
-    event.preventDefault(); // Prevent form from reloading the page
-    const message = chatInput.value.trim();
-    if (message) {
-        await sendMessage(message);
-        chatInput.value = ''; // Clear input field after sending
+      speechRecognizer.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setStatus(`You said: ${transcript}`);
+        sendMessage(transcript);
+      };
+
+      speechRecognizer.onerror = (event) => {
+        setStatus(`Error occurred: ${event.error}`);
+      };
+
+      speechRecognizer.onend = () => {
+        setListening(false);
+        setStatus("");
+      };
+
+      setRecognition(speechRecognizer);
     } else {
-        chatResponse.textContent = "Please enter a message.";
+      alert("Your browser does not support speech recognition.");
     }
-});
+  }, []);
 
-// Function to send a message to the chatbot API
-async function sendMessage(message) {
+  const startListening = () => {
+    if (recognition) {
+      recognition.start();
+    }
+  };
+
+  const stopListening = () => {
+    if (recognition) {
+      recognition.stop();
+    }
+  };
+
+  const sendMessage = async (message) => {
+    setMessage("");
+    setChatHistory((prev) => [
+      ...prev,
+      { user: message, bot: "Processing..." },
+    ]);
     try {
-        // Adjust the API endpoint for Vercel
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ message })
-        });
-
-        const data = await response.json();
-        if (data && data.response) {
-            chatResponse.textContent = `Chatbot: ${data.response}`;
-            speakText(data.response);
-
-            // Add messages to chat history
-            chatHistory.innerHTML += `
-                <p><strong>You:</strong> ${message}</p>
-                <p><strong>Chatbot:</strong> ${data.response}</p>`;
-            chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll to the latest message
-        } else if (data.error) {
-            chatResponse.textContent = `Error: ${data.error}`;
-        } else {
-            chatResponse.textContent = "Error: No response from the chatbot.";
-        }
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message }),
+      });
+      const data = await response.json();
+      if (data.response) {
+        setChatHistory((prev) =>
+          prev.map((entry, idx) =>
+            idx === prev.length - 1
+              ? { ...entry, bot: data.response }
+              : entry
+          )
+        );
+      } else {
+        setChatHistory((prev) =>
+          prev.map((entry, idx) =>
+            idx === prev.length - 1
+              ? { ...entry, bot: "No response from chatbot." }
+              : entry
+          )
+        );
+      }
     } catch (error) {
-        chatResponse.textContent = `Error: ${error.message}`;
-        console.error("Error in sendMessage:", error);
+      setChatHistory((prev) =>
+        prev.map((entry, idx) =>
+          idx === prev.length - 1
+            ? { ...entry, bot: `Error: ${error.message}` }
+            : entry
+        )
+      );
     }
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (message.trim()) {
+      sendMessage(message.trim());
+    }
+  };
+
+  return (
+    <div className="App">
+      <h1>Chat with the Bot</h1>
+      <div id="chat-history" style={{ border: "1px solid #ccc", padding: "10px", height: "300px", overflowY: "scroll", marginBottom: "10px" }}>
+        {chatHistory.map((entry, index) => (
+          <div key={index}>
+            <p><strong>You:</strong> {entry.user}</p>
+            <p><strong>Bot:</strong> {entry.bot}</p>
+          </div>
+        ))}
+      </div>
+      <div>
+        <button id="start-record-btn" onClick={startListening} disabled={listening}>Start Recording</button>
+        <button id="stop-record-btn" onClick={stopListening} disabled={!listening}>Stop Recording</button>
+        <p id="status">{status}</p>
+      </div>
+      <form id="chat-form" onSubmit={handleFormSubmit}>
+        <input
+          type="text"
+          id="chat-input"
+          placeholder="Enter your message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          style={{ flex: 1, padding: "10px", fontSize: "16px" }}
+        />
+        <button type="submit" style={{ padding: "10px", fontSize: "16px" }}>Send</button>
+      </form>
+    </div>
+  );
 }
 
-// Function to speak chatbot responses
-function speakText(text) {
-    const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onerror = () => {
-        console.error("Error occurred during speech synthesis.");
-    };
-    synth.speak(utterance);
-}
+export default App;
