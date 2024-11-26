@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice-Enabled Chatbot</title>
-    <link rel="stylesheet" href="/static/styles.css"> <!-- Ensure the correct path for styles -->
+    <link rel="stylesheet" href="/static/styles.css"> <!-- Correct path for styles -->
 </head>
 <body>
     <h1>Chat with the Bot</h1>
@@ -19,9 +19,8 @@
         <button type="submit">Send</button>
     </form>
 
-    <script src="/static/app.js"></script> <!-- Ensure the correct path for app.js -->
+    <script src="/static/app.js"></script> <!-- Correct path for app.js -->
     <script>
-        // Ensure Vercel compatibility by using relative paths for API endpoints
         const API_URL = '/chat'; // Relative path for the backend API
 
         const startRecordBtn = document.getElementById('start-record-btn');
@@ -98,20 +97,5 @@
                 const data = await response.json();
 
                 if (data.response) {
-                    chatResponse.textContent = `Chatbot: ${data.response}`;
-                    chatHistory.innerHTML += `
-                        <p><strong>You:</strong> ${message}</p>
-                        <p><strong>Chatbot:</strong> ${data.response}</p>`;
-                    chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll
-                } else if (data.error) {
-                    chatResponse.textContent = `Error: ${data.error}`;
-                } else {
-                    chatResponse.textContent = "Error: No response from the chatbot.";
-                }
-            } catch (error) {
-                chatResponse.textContent = `Error: ${error.message}`;
-            }
-        }
-    </script>
-</body>
-</html>
+                    chatResponse.textContent = `Chat
+7
